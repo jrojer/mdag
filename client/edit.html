@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en-us">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Editor</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" type="text/css" href="stylesheets/normalize.css" media="screen">
+    <link href='https://fonts.googleapis.com/css?family=Open+Sans:400,700' rel='stylesheet' type='text/css'>
+    <link rel="stylesheet" type="text/css" href="stylesheets/stylesheet.css" media="screen">
+    <link rel="stylesheet" type="text/css" href="stylesheets/github-light.css" media="screen">
+    <style>
+        .editor-preview h1,
+        .editor-preview h2,
+        .editor-preview h3,
+        .editor-preview h4,
+        .editor-preview h5 {
+            margin-bottom: 10px;
+        }
+
+        .editor-preview h1 {
+            border-bottom: 1px solid #ddd;
+        }
+
+        .editor-preview h1 {
+            border-bottom: 1px solid #eee;
+        }
+    </style>
+</head>
+
+<body>
+    <section class="main-content">
+        <h1 id="title"><a id="h1_demo1" class="anchor" href="#h1_demo1" aria-hidden="true">
+                <span class="octicon octicon-link">
+                </span></a>
+            New note
+        </h1>
+        <textarea id="demo1"></textarea>
+
+        <button id="save_button" class="button">Save</button>
+        <button id="delete_button" class="button" hidden>Delete</button>
+        <button id="cancel_button" class="button">Cancel</button>
+        <p id="error_message" hidden>error</p>
+    </section>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/latest/css/font-awesome.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/simplemde/latest/simplemde.min.css">
+    <script src="https://cdn.jsdelivr.net/simplemde/latest/simplemde.min.js"></script>
+    <script>
+
+        function load(url, onLoad) {
+            var req = new XMLHttpRequest();
+            req.addEventListener("load", function () {
+                onLoad(JSON.parse(this.responseText));
+            });
+            req.open("GET", url);
+            req.send()
+        }
+
+        function post(url, object, onDone) {
+            var xhr = new XMLHttpRequest();
+            xhr.open("POST", url, true);
+            xhr.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
+            xhr.onreadystatechange = function () {
+                if (onDone && this.readyState === XMLHttpRequest.DONE) {
+                    onDone(this.status);
+                }
+            }
+            xhr.send(JSON.stringify(object));
+        }
+
+        let simpleMde = new SimpleMDE({
+            element: document.getElementById("demo1"),
+            spellChecker: false,
+        });
+
+        let saveButton = document.getElementById("save_button");
+        let cancelButton = document.getElementById("cancel_button");
+        let deleteButton = document.getElementById("delete_button");
+        let title = document.getElementById("title");
+        let errorMessage = document.getElementById("error_message");
+
+        const urlParams = new URLSearchParams(document.location.search);
+        let nodeId = urlParams.get("node_id");
+        if (nodeId) {
+            load(`/api/get_note?node_id=${nodeId}`, function (response) {
+                simpleMde.value(response["text"]);
+                title.innerHTML = "Editing";
+            });
+            deleteButton.hidden = false;
+        }
+
+        saveButton.addEventListener("click", function () {
+            let url = '/api/add_note';
+            let payload = { "text": simpleMde.value() };
+            if (nodeId) {
+                payload["node_id"] = nodeId;
+            }
+            saveButton.textContent = "Saving...";
+            post(url, payload, function (status) {
+                saveButton.textContent = "Save";
+                if (status === 200) {
+                    window.location.replace("/index.html");
+                }
+            });
+        });
+
+        cancelButton.addEventListener("click", function () {
+            window.location.replace("/index.html");
+        });
+
+        deleteButton.addEventListener("click", function () {
+            deleteButton.textContent = "Deleting...";
+            post("/api/delete_node", { "node_id": nodeId }, function (status) {
+                deleteButton.textContent = "Delete";
+                if (status === 200) {
+                    window.location.replace("/index.html");
+                }
+            });
+
+        });
+
+    </script>
+</body>
+
+</html>
